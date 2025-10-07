@@ -1,0 +1,8 @@
+{
+  "step": 5,
+  "digit": 5,
+  "bucket": [
+    355
+  ],
+  "explanation": "Numbers with ones digit 5: 355"
+}

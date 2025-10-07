@@ -1,0 +1,16 @@
+node_modules
+.pnpm-store
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+!.env.sample
+.DS_Store
+coverage
+.dist
+.next
+out
+.vscode
+.idea
+dist
