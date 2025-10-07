@@ -1,74 +1,19 @@
-import Fastify from 'fastify';
-import cookie from '@fastify/cookie';
-import cors from '@fastify/cors';
-import swagger from '@fastify/swagger';
-import swaggerUi from '@fastify/swagger-ui';
-import { env } from './env';
-import { authRoutes } from './routes/auth';
+import express from 'express';
+import swaggerUi from 'swagger-ui-express';
+import telegramWebhookRouter from './routes/webhooks/telegram';
+import inboxRouter from './routes/inbox';
+import { swaggerDocument } from './swagger';
 
-export const createApp = async () => {
-  const app = Fastify({
-    logger: true,
-  });
+const app = express();
 
-  await app.register(cors, {
-    origin: true,
-    credentials: true,
-  });
+app.use(express.json({ limit: '2mb' }));
 
-  await app.register(cookie, {
-    parseOptions: {
-      sameSite: 'lax',
-    },
-  });
+app.get('/healthz', (_req, res) => {
+  res.json({ status: 'ok' });
+});
 
-  await app.register(swagger, {
-    openapi: {
-      info: {
-        title: 'API Documentation',
-        version: '1.0.0',
-      },
-      servers: [
-        {
-          url: 'http://localhost:{port}',
-          variables: {
-            port: {
-              default: String(env.port),
-            },
-          },
-        },
-      ],
-    },
-  });
+app.use('/webhooks/telegram', telegramWebhookRouter);
+app.use('/inbox', inboxRouter);
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-  await app.register(swaggerUi, {
-    routePrefix: '/docs',
-    uiConfig: {
-      docExpansion: 'list',
-      deepLinking: false,
-    },
-  });
-
-  await app.register(authRoutes);
-
-  app.get('/health', async () => ({ status: 'ok' }));
-
-  return app;
-};
-
-const start = async () => {
-  const app = await createApp();
-
-  try {
-    await app.listen({ port: env.port, host: '0.0.0.0' });
-    app.log.info(`Server listening on port ${env.port}`);
-    app.log.info(`Swagger UI available at /docs`);
-  } catch (error) {
-    app.log.error(error);
-    process.exit(1);
-  }
-};
-
-if (require.main === module) {
-  start();
-}
+export default app;
