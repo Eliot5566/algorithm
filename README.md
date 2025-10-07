@@ -1,30 +1,67 @@
-# Deployment Guide
+# Algorithm Monorepo
 
-## 快速開始
+本專案示範 FAQ 管理 API，採用 Node.js + Express + TypeScript 實作，並透過 Zod 進行輸入驗證。
 
-1. 準備 `.env` 檔案（提供資料庫 SA 密碼、API 服務所需設定、`TELEGRAM_WEBHOOK_SECRET` 等環境變數）。
-2. 於專案根目錄執行：
+## 專案結構
 
-   ```bash
-   docker compose up -d --build
-   ```
+```
+packages/
+  api/
+    src/
+      routes/faqs.ts   # FAQ 路由
+      services/        # FAQ 服務與相似度判斷
+      middleware/      # 權限驗證
+    docs/swagger.yaml  # API 文件
+    tests/             # 單元測試
+```
 
-服務啟動後，瀏覽器造訪 `http://localhost` 即可透過 Nginx 反向代理使用 Web 與 API。
+## FAQ API 使用說明
 
-## 預設帳號
+### 權限
 
-- 帳號：`owner@demo.local`
-- 密碼：`12345678`
+所有 `/faqs` 相關路由均需在 `x-role` header 帶入 `owner` 或 `admin`。
 
-## Telegram Bot Webhook 設定
+### 路由
 
-1. 透過 [BotFather](https://t.me/BotFather) 建立新的 BOT 並取得 Token。
-2. 服務啟動後，使用下列指令設定 webhook（請將 `<public-host>` 替換為對外網址或 IP）：
+| Method | Path | 說明 |
+| ------ | ---- | ---- |
+| GET | `/faqs` | 列出所有 FAQ |
+| POST | `/faqs` | 建立 FAQ |
+| PATCH | `/faqs/:id` | 更新 FAQ |
+| DELETE | `/faqs/:id` | 刪除 FAQ |
+| POST | `/faqs/match` | 依照提問內容尋找最佳 FAQ |
 
-   ```bash
-   curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
-     -H "Content-Type: application/json" \
-     -d '{"url":"http://<public-host>/api/webhooks/telegram?secret=TELEGRAM_WEBHOOK_SECRET"}'
-   ```
+建立與更新 FAQ 時需提供以下欄位：
 
-   將 `TELEGRAM_WEBHOOK_SECRET` 替換為 `.env` 中設定的密鑰。
+- `question`：問題描述（必填）
+- `answer`：回答內容（必填）
+
+### 啟動開發伺服器
+
+```bash
+npm install
+npm run dev
+```
+
+伺服器預設於 `http://localhost:3000` 啟動。
+
+### 查詢 FAQ 答案範例
+
+```bash
+curl -X POST http://localhost:3000/faqs/match \
+  -H 'Content-Type: application/json' \
+  -H 'x-role: admin' \
+  -d '{"query":"今天營業嗎"}'
+```
+
+## 單元測試
+
+```bash
+npm test
+```
+
+測試會建立三筆 FAQ 並驗證 `matchFAQ` 能對「今天營業嗎」、「菜單」、「付款」等語句找到正確答案。
+
+## Swagger 文件
+
+Swagger 定義位於 `packages/api/docs/swagger.yaml`，可使用任何 OpenAPI viewer 或 [Swagger Editor](https://editor.swagger.io/) 載入檢視。

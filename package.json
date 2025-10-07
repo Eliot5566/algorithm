@@ -1,0 +1,11 @@
+{
+  "name": "algorithm-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm --prefix packages/api test",
+    "dev": "npm --prefix packages/api run dev"
+  }
+}
