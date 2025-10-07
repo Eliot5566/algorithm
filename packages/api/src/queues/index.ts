@@ -1,110 +1,29 @@
-import { Queue, QueueScheduler, Worker, type JobsOptions } from 'bullmq';
-import { getRedisConfig } from '../utils/redis.js';
-import { collectDailyDigest, formatDailyDigestMessage } from '../services/dailyDigest.js';
-import { sendTelegramMessage } from '../services/telegram.js';
+import { Queue } from 'bullmq';
+import { env } from '../env';
 
-export interface DailyDigestJobData {
-  targetDate?: string;
-}
+const connection = {
+  host: env.REDIS_HOST,
+  port: env.REDIS_PORT,
+  password: env.REDIS_PASSWORD,
+};
 
-export interface ReplySuggestJobData {
-  tenantId: string;
-  conversationId: string;
-  messageId: string;
-  text: string;
-}
-
-const connection = getRedisConfig();
-
-export const dailyDigestQueue = new Queue<DailyDigestJobData>('daily_digest', {
-  connection
+export const notificationQueue = new Queue('notifications', {
+  connection,
 });
 
-export const replySuggestQueue = new Queue<ReplySuggestJobData>('reply_suggest', {
-  connection
+export const webhookQueue = new Queue('webhooks', {
+  connection,
 });
 
-let initialised = false;
-let dailyDigestScheduler: QueueScheduler | undefined;
-let dailyDigestWorker: Worker<DailyDigestJobData> | undefined;
-let replySuggestWorker: Worker<ReplySuggestJobData> | undefined;
+export type QueueName = 'notifications' | 'webhooks';
 
-export function initQueues(): void {
-  if (initialised) {
-    return;
+export const getQueue = (name: QueueName) => {
+  switch (name) {
+    case 'notifications':
+      return notificationQueue;
+    case 'webhooks':
+      return webhookQueue;
+    default:
+      throw new Error(`Unknown queue name: ${name}`);
   }
-  initialised = true;
-
-  dailyDigestScheduler = new QueueScheduler('daily_digest', { connection });
-  void dailyDigestScheduler.waitUntilReady();
-
-  dailyDigestWorker = new Worker(
-    'daily_digest',
-    async (job) => {
-      const targetDate = job.data?.targetDate ? new Date(job.data.targetDate) : new Date();
-      const tenants = await collectDailyDigest(targetDate);
-      const message = formatDailyDigestMessage(targetDate, tenants);
-      await sendTelegramMessage(message);
-      return {
-        tenants: tenants.length
-      };
-    },
-    { connection }
-  );
-
-  dailyDigestWorker.on('failed', (job, error) => {
-    console.error('[daily_digest] job failed', job?.id, error);
-  });
-
-  replySuggestWorker = new Worker(
-    'reply_suggest',
-    async (job) => {
-      console.info('[reply_suggest] job received', job.id, job.data);
-      return job.data;
-    },
-    { connection }
-  );
-
-  replySuggestWorker.on('failed', (job, error) => {
-    console.error('[reply_suggest] job failed', job?.id, error);
-  });
-}
-
-export async function enqueueDailyDigestJob(date: Date, options: JobsOptions = {}): Promise<void> {
-  await dailyDigestQueue.add(
-    'daily_digest',
-    {
-      targetDate: date.toISOString()
-    },
-    {
-      removeOnComplete: true,
-      removeOnFail: false,
-      ...options
-    }
-  );
-}
-
-export async function enqueueReplySuggestJob(
-  data: ReplySuggestJobData,
-  options: JobsOptions = {}
-): Promise<void> {
-  await replySuggestQueue.add(
-    'reply_suggest',
-    data,
-    {
-      removeOnComplete: true,
-      removeOnFail: false,
-      ...options
-    }
-  );
-}
-
-export async function shutdownQueues(): Promise<void> {
-  await Promise.all([
-    dailyDigestWorker?.close(),
-    replySuggestWorker?.close(),
-    dailyDigestQueue.close(),
-    replySuggestQueue.close(),
-    dailyDigestScheduler?.close()
-  ]);
-}
+};
