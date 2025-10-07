@@ -1,14 +1,15 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
-    "baseUrl": "src",
-    "paths": {
-      "@shared/*": ["../shared/src/*"],
-      "@unified-inbox/shared": ["../shared/src"]
-    }
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "outDir": "dist"
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "test"]
+  "exclude": ["node_modules", "dist"]
 }
