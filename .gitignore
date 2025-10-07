@@ -1,2 +1,4 @@
-node_modules/
-packages/api/dist/
+node_modules
+coverage
+dist
+.DS_Store
