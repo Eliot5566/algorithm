@@ -1,22 +1,25 @@
 import type { Metadata } from 'next';
-import './globals.css';
+import type { ReactNode } from 'react';
 import 'antd/dist/reset.css';
-import QueryClientProvider from '@/providers/query-client-provider';
+import './globals.css';
+import { AppProviders } from './providers';
+import { getServerSession } from '../lib/auth';
+import { AppShell } from '../components/AppShell';
 
 export const metadata: Metadata = {
-  title: 'Support Console',
-  description: 'Manage conversations, FAQs, forms, orders, and settings.'
+  title: 'Unified Inbox',
+  description: 'Manage conversations, forms, and FAQs in one place.',
 };
 
-export default function RootLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const session = await getServerSession();
+
   return (
     <html lang="en">
       <body>
-        <QueryClientProvider>{children}</QueryClientProvider>
+        <AppProviders>
+          <AppShell session={session}>{children}</AppShell>
+        </AppProviders>
       </body>
     </html>
   );

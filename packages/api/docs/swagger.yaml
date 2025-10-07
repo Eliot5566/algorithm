@@ -1,0 +1,168 @@
+openapi: 3.0.3
+info:
+  title: FAQ Management API
+  version: 1.0.0
+  description: 管理 FAQ 與依關鍵字比對答案的 API。
+servers:
+  - url: http://localhost:3000
+paths:
+  /faqs:
+    get:
+      summary: 取得 FAQ 列表
+      security:
+        - RoleHeader: []
+      responses:
+        '200':
+          description: FAQ 列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FAQ'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: 建立 FAQ
+      security:
+        - RoleHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FAQInput'
+      responses:
+        '201':
+          description: 建立成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FAQ'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /faqs/{id}:
+    patch:
+      summary: 更新 FAQ
+      security:
+        - RoleHeader: []
+      parameters:
+        - $ref: '#/components/parameters/FAQId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FAQUpdateInput'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FAQ'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: 刪除 FAQ
+      security:
+        - RoleHeader: []
+      parameters:
+        - $ref: '#/components/parameters/FAQId'
+      responses:
+        '204':
+          description: 刪除成功
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /faqs/match:
+    post:
+      summary: 透過提問尋找 FAQ
+      security:
+        - RoleHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: 使用者輸入的提問
+      responses:
+        '200':
+          description: 成功找到 FAQ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FAQ'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: 無符合 FAQ
+components:
+  securitySchemes:
+    RoleHeader:
+      type: apiKey
+      in: header
+      name: x-role
+      description: 需提供 `owner` 或 `admin` 權限。
+  parameters:
+    FAQId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    FAQ:
+      type: object
+      properties:
+        id:
+          type: string
+        question:
+          type: string
+        answer:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    FAQInput:
+      type: object
+      required:
+        - question
+        - answer
+      properties:
+        question:
+          type: string
+        answer:
+          type: string
+    FAQUpdateInput:
+      type: object
+      properties:
+        question:
+          type: string
+        answer:
+          type: string
+  responses:
+    Forbidden:
+      description: 無權限存取
+    ValidationError:
+      description: 請求參數不正確
+    NotFound:
+      description: 找不到指定 FAQ
