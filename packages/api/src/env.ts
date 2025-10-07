@@ -1,31 +1,31 @@
-import dotenv from 'dotenv';
-import { z } from 'zod';
+import { config } from 'dotenv';
 
-dotenv.config();
+config();
 
-const envSchema = z.object({
-  NODE_ENV: z.string().default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
-  MSSQL_SERVER: z.string().default('mssql'),
-  MSSQL_DB: z.string().default('unified_inbox'),
-  MSSQL_USER: z.string().default('sa'),
-  MSSQL_PASS: z.string().default('YourStrong@Passw0rd'),
-  JWT_SECRET: z.string().default('dev-secret'),
-  TELEGRAM_BOT_TOKEN: z.string().default('replace-with-bot-token'),
-  TELEGRAM_WEBHOOK_SECRET: z.string().default('replace-with-webhook-secret'),
-  TELEGRAM_DEFAULT_CHAT_ID: z.string().default('replace-with-chat-id'),
-  REDIS_HOST: z.string().default('redis'),
-  REDIS_PORT: z.coerce.number().int().positive().default(6379),
-  REDIS_PASSWORD: z.string().optional(),
-});
+type Env = {
+  nodeEnv: string;
+  port: number;
+  jwtSecret: string;
+};
 
-export type Env = z.infer<typeof envSchema>;
+const ensureEnv = (): Env => {
+  const { NODE_ENV, PORT, JWT_SECRET } = process.env;
 
-const parsed = envSchema.safeParse(process.env);
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+  }
 
-if (!parsed.success) {
-  console.error('❌ Invalid environment variables:', parsed.error.flatten().fieldErrors);
-  throw new Error('Invalid environment variables');
-}
+  const port = PORT ? Number(PORT) : 3000;
 
-export const env: Env = parsed.data;
+  if (Number.isNaN(port)) {
+    throw new Error('PORT environment variable must be a number');
+  }
+
+  return {
+    nodeEnv: NODE_ENV ?? 'development',
+    port,
+    jwtSecret: JWT_SECRET,
+  };
+};
+
+export const env = ensureEnv();

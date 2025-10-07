@@ -1,58 +1,73 @@
-import Fastify, { FastifyBaseLogger, FastifyInstance } from 'fastify';
+import Fastify from 'fastify';
+import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
-import pino from 'pino';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { env } from './env';
-import { registerSwagger } from './plugins/swagger';
-import { healthRoutes } from './routes/health';
-import { getPool } from './db/mssql';
-import { notificationQueue } from './queues';
+import { authRoutes } from './routes/auth';
 
-export function buildServer(): FastifyInstance {
-  const logger = pino({
-    level: env.NODE_ENV === 'production' ? 'info' : 'debug',
-  }) as unknown as FastifyBaseLogger;
-
+export const createApp = async () => {
   const app = Fastify({
-    logger,
+    logger: true,
   });
 
-  app.register(cors, {
+  await app.register(cors, {
     origin: true,
     credentials: true,
   });
 
-  app.addHook('onReady', async () => {
-    try {
-      await getPool();
-      app.log.info('✅ MSSQL connection pool established');
-    } catch (error) {
-      app.log.error({ error }, 'Failed to initialize MSSQL pool');
-    }
-
-    try {
-      await notificationQueue.waitUntilReady();
-      app.log.info('✅ Redis connection ready for BullMQ queues');
-    } catch (error) {
-      app.log.error({ error }, 'Failed to initialize BullMQ queues');
-    }
+  await app.register(cookie, {
+    parseOptions: {
+      sameSite: 'lax',
+    },
   });
 
-  app.register(registerSwagger);
-  app.register(healthRoutes, { prefix: '/api' });
+  await app.register(swagger, {
+    openapi: {
+      info: {
+        title: 'API Documentation',
+        version: '1.0.0',
+      },
+      servers: [
+        {
+          url: 'http://localhost:{port}',
+          variables: {
+            port: {
+              default: String(env.port),
+            },
+          },
+        },
+      ],
+    },
+  });
+
+  await app.register(swaggerUi, {
+    routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: false,
+    },
+  });
+
+  await app.register(authRoutes);
+
+  app.get('/health', async () => ({ status: 'ok' }));
 
   return app;
-}
+};
 
-async function start() {
-  const app = buildServer();
+const start = async () => {
+  const app = await createApp();
+
   try {
-    await app.listen({ port: env.PORT, host: '0.0.0.0' });
-    app.log.info(`🚀 API server listening on port ${env.PORT}`);
+    await app.listen({ port: env.port, host: '0.0.0.0' });
+    app.log.info(`Server listening on port ${env.port}`);
+    app.log.info(`Swagger UI available at /docs`);
   } catch (error) {
     app.log.error(error);
     process.exit(1);
   }
-}
+};
 
 if (require.main === module) {
   start();
