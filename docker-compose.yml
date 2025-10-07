@@ -1,0 +1,60 @@
+version: '3.9'
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: unified-inbox-mssql
+    environment:
+      ACCEPT_EULA: 'Y'
+      MSSQL_PID: 'Developer'
+      SA_PASSWORD: ${MSSQL_PASS}
+    ports:
+      - '1433:1433'
+    volumes:
+      - mssql-data:/var/opt/mssql
+
+  redis:
+    image: redis:7-alpine
+    container_name: unified-inbox-redis
+    ports:
+      - '6379:6379'
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: unified-inbox-api
+    env_file: .env
+    environment:
+      PORT: 3000
+      MSSQL_SERVER: mssql
+      REDIS_HOST: redis
+    depends_on:
+      - mssql
+      - redis
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+    container_name: unified-inbox-web
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-/api}
+    depends_on:
+      - api
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: unified-inbox-nginx
+    ports:
+      - '3000:80'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - web
+
+volumes:
+  mssql-data:

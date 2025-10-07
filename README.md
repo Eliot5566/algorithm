@@ -1,6 +1,6 @@
-# Forms API Prototype
+# Algorithm Monorepo
 
-此範例專案提供一個以 Express 建立的簡單表單管理 API。服務會暫存資料於記憶體中，並提供 Swagger 文件方便了解端點。
+本專案示範 FAQ 管理 API，採用 Node.js + Express + TypeScript 實作，並透過 Zod 進行輸入驗證。
 
 ## 專案結構
 
@@ -8,41 +8,60 @@
 packages/
   api/
     src/
-      routes/        # 表單、訂單（表單送出）相關的路由
-      app.ts         # 建立 Express App
-      server.ts      # 進入點
-    swagger.yaml     # OpenAPI 規格
+      routes/faqs.ts   # FAQ 路由
+      services/        # FAQ 服務與相似度判斷
+      middleware/      # 權限驗證
+    docs/swagger.yaml  # API 文件
+    tests/             # 單元測試
 ```
 
-## 安裝與啟動
+## FAQ API 使用說明
+
+### 權限
+
+所有 `/faqs` 相關路由均需在 `x-role` header 帶入 `owner` 或 `admin`。
+
+### 路由
+
+| Method | Path | 說明 |
+| ------ | ---- | ---- |
+| GET | `/faqs` | 列出所有 FAQ |
+| POST | `/faqs` | 建立 FAQ |
+| PATCH | `/faqs/:id` | 更新 FAQ |
+| DELETE | `/faqs/:id` | 刪除 FAQ |
+| POST | `/faqs/match` | 依照提問內容尋找最佳 FAQ |
+
+建立與更新 FAQ 時需提供以下欄位：
+
+- `question`：問題描述（必填）
+- `answer`：回答內容（必填）
+
+### 啟動開發伺服器
 
 ```bash
-cd packages/api
 npm install
-npm run build
-npm start
-```
-
-開發階段可以使用熱重載模式：
-
-```bash
 npm run dev
 ```
 
-服務預設會在 `http://localhost:3000` 啟動，並提供以下端點：
+伺服器預設於 `http://localhost:3000` 啟動。
 
-- `GET /forms`：取得所有表單
-- `POST /forms`：建立新表單
-- `POST /forms/{id}/preview`：取得簡化的表單預覽（文字敘述與快速回覆鍵資訊）
-- `POST /forms/{id}/submit`：模擬聊天端送回資料並建立 `FormSubmissions`
-- `GET /orders`：取得所有 `FormSubmissions`
-- `PATCH /orders/{id}`：更新 `FormSubmissions` 狀態（new/confirmed/cancelled）
-- `GET /health`：健康檢查
+### 查詢 FAQ 答案範例
 
-Swagger 文件可於 `http://localhost:3000/docs` 查看。
+```bash
+curl -X POST http://localhost:3000/faqs/match \
+  -H 'Content-Type: application/json' \
+  -H 'x-role: admin' \
+  -d '{"query":"今天營業嗎"}'
+```
 
-## 注意事項
+## 單元測試
 
-- 資料儲存於記憶體，因此重啟服務後資料會清空。
-- `POST /forms` 與 `POST /forms/{id}/submit` 皆會驗證必要欄位，若缺少會回傳 400。
-- `PATCH /orders/{id}` 只接受 `new`、`confirmed`、`cancelled` 三種狀態。
+```bash
+npm test
+```
+
+測試會建立三筆 FAQ 並驗證 `matchFAQ` 能對「今天營業嗎」、「菜單」、「付款」等語句找到正確答案。
+
+## Swagger 文件
+
+Swagger 定義位於 `packages/api/docs/swagger.yaml`，可使用任何 OpenAPI viewer 或 [Swagger Editor](https://editor.swagger.io/) 載入檢視。
