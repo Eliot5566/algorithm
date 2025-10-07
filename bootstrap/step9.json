@@ -1,0 +1,9 @@
+{
+  "step": 9,
+  "digit": 9,
+  "bucket": [
+    329,
+    839
+  ],
+  "explanation": "Numbers with ones digit 9: 329, 839"
+}
